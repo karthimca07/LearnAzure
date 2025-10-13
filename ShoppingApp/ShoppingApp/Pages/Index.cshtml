@@ -1,0 +1,166 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="container">
+    <h1 class="text-center mb-4">Our Products</h1>
+    
+    <!-- Loading Spinner -->
+    <div id="loadingSpinner" class="text-center my-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading products...</p>
+    </div>
+
+    <!-- Products Container -->
+    <div id="productsContainer" class="row" style="display: none;">
+        <!-- Products will be loaded here -->
+    </div>
+
+    <!-- Error Message -->
+    <div id="errorMessage" class="alert alert-danger" style="display: none;">
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .card.selected {
+            border: 2px solid #007bff;
+        }
+        .card-img-top {
+            height: 200px;
+            object-fit: cover;
+        }
+        .add-to-cart-btn {
+            transition: all 0.3s;
+        }
+        .add-to-cart-btn.added {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .product-price {
+            font-size: 1.25rem;
+            color: #28a745;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        const apiBaseUrl = '@ViewData["ApiBaseUrl"]';
+        let selectedProducts = new Set();
+        
+        $(document).ready(function() {
+            loadProducts();
+        });
+
+        function loadProducts() {
+            $('#loadingSpinner').show();
+            $('#productsContainer').hide();
+            $('#errorMessage').hide();
+
+            $.ajax({
+                url: `${apiBaseUrl}/api/products`,
+                method: 'GET',
+                success: function(products) {
+                    const container = $('#productsContainer');
+                    container.empty();
+                    
+                    products.forEach(function(product) {
+                        const card = `
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100" data-product-id="${product.id}">
+                                    <img src="${product.imageUrl}" class="card-img-top" alt="${product.name}" 
+                                         onerror="this.src='/images/placeholder.jpg'">
+                                    <div class="card-body d-flex flex-column">
+                                        <h5 class="card-title">${product.name}</h5>
+                                        <p class="card-text flex-grow-1">${product.description}</p>
+                                        <div class="d-flex justify-content-between align-items-center mt-3">
+                                            <p class="product-price mb-0">$${product.price.toFixed(2)}</p>
+                                            <button class="btn btn-primary add-to-cart-btn" 
+                                                    onclick="addToCart(event, ${product.id})">
+                                                Add to Cart
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        container.append(card);
+                    });
+
+                    // Show products after they're loaded
+                    $('#loadingSpinner').hide();
+                    $('#productsContainer').fadeIn(300);
+
+                    // Add click handler for cards
+                    $('.card').click(function(e) {
+                        if (!$(e.target).hasClass('btn')) {
+                            const productId = $(this).data('product-id');
+                            toggleProductSelection(productId, this);
+                        }
+                    });
+                },
+                error: function(error) {
+                    console.error('Error loading products:', error);
+                    $('#loadingSpinner').hide();
+                    $('#errorMessage')
+                        .html('Error loading products. Please try again later.')
+                        .fadeIn(300);
+                }
+            });
+        }
+
+        function toggleProductSelection(productId, cardElement) {
+            const card = $(cardElement);
+            if (selectedProducts.has(productId)) {
+                selectedProducts.delete(productId);
+                card.removeClass('selected');
+            } else {
+                selectedProducts.add(productId);
+                card.addClass('selected');
+            }
+            updateSelectionStatus();
+        }
+
+        function updateSelectionStatus() {
+            if (selectedProducts.size > 0) {
+                console.log(`Selected products: ${Array.from(selectedProducts).join(', ')}`);
+            }
+        }
+
+        function addToCart(event, productId) {
+            event.stopPropagation(); // Prevent card selection when clicking the button
+            const btn = $(event.target);
+            
+            // Disable button and show loading state
+            btn.prop('disabled', true)
+               .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...');
+
+            // Simulate API call (replace with actual API call)
+            setTimeout(() => {
+                btn.removeClass('btn-primary')
+                   .addClass('btn-success added')
+                   .html('Added to Cart ✓');
+
+                // Reset button after 2 seconds
+                setTimeout(() => {
+                    btn.removeClass('btn-success added')
+                       .addClass('btn-primary')
+                       .html('Add to Cart')
+                       .prop('disabled', false);
+                }, 2000);
+            }, 800);
+        }
+    </script>
+}
